@@ -2,47 +2,11 @@ import streamlit as st
 import os
 from main import ResearchAssistant, MainFunction
 import asyncio
-from config.settings import LLM_CONFIG, EMBEDDING_CONFIG
 from core.types import ResearchDirection, EvaluationCriteria
 
 def initialize_session_state():
     if 'assistant' not in st.session_state:
         st.session_state.assistant = ResearchAssistant()
-    if 'api_keys_set' not in st.session_state:
-        st.session_state.api_keys_set = False
-
-def save_api_keys(llm_key: str, voyage_key: str):
-    """API 키를 설정에 저장"""
-    LLM_CONFIG["api_key"] = llm_key
-    EMBEDDING_CONFIG["api_key"] = voyage_key
-    st.session_state.api_keys_set = True
-
-def api_keys_sidebar():
-    """API 키 입력을 위한 사이드바"""
-    with st.sidebar:
-        st.header("API 키 설정")
-
-        if st.session_state.api_keys_set:
-            st.success("API 키가 설정되었습니다.")
-
-        with st.form("api_keys_form"):
-            llm_key = st.text_input(
-                "GROQ API 키",
-                type="password",
-                value=LLM_CONFIG["api_key"] if LLM_CONFIG["api_key"] != "place-holder" else ""
-            )
-            voyage_key = st.text_input(
-                "VoyageAI API 키",
-                type="password",
-                value=EMBEDDING_CONFIG["api_key"] if EMBEDDING_CONFIG["api_key"] != "place-holder" else ""
-            )
-
-            if st.form_submit_button("API 키 저장"):
-                if llm_key and voyage_key:
-                    save_api_keys(llm_key, voyage_key)
-                    st.success("API 키가 성공적으로 저장되었습니다.")
-                else:
-                    st.error("모든 API 키를 입력해주세요.")
 
 def create_evaluation_criteria():
     """평가 기준 생성"""
@@ -70,11 +34,6 @@ def main():
     st.write("This tool will help you conduct research and analysis.")
 
     initialize_session_state()
-    api_keys_sidebar()
-
-    if not st.session_state.api_keys_set:
-        st.warning("시작하기 전에 사이드바에서 API 키를 설정해주세요.")
-        return
 
     with st.form(key='research_form'):
         query = st.text_input(label='연구주제')
@@ -100,18 +59,15 @@ def main():
 
         if submit_button:
             if query:
-                if st.session_state.api_keys_set:
-                    result = MainFunction.process_and_display_results(
-                        assistant=st.session_state.assistant,
-                        topic=query,  # 연구 주제
-                        description=context,  # 연구 설명
-                        direction=ResearchDirection(direction),  # 연구 방향성
-                        evaluation_criteria=evaluation_criteria  # 평가 기준
-                    )
-                    if result:
-                        st.session_state.last_result = result
-                else:
-                    st.error("API 키를 먼저 설정해주세요.")
+                result = MainFunction.process_and_display_results(
+                    assistant=st.session_state.assistant,
+                    topic=query,  # 연구 주제
+                    description=context,  # 연구 설명
+                    direction=ResearchDirection(direction),  # 연구 방향성
+                    evaluation_criteria=evaluation_criteria  # 평가 기준
+                )
+                if result:
+                    st.session_state.last_result = result
             else:
                 st.warning("연구주제를 입력해주세요.")
 

@@ -8,18 +8,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # LLM Settings
 
 LLM_CONFIG = {
-    "model_path": str(BASE_DIR / "models/llama-2-13b-chat.gguf"),
-    "temperature": 0.3,
-    "max_tokens": 4096,
-    "n_ctx": 8192,
-    "n_gpu_layers": 8,
-    "n_threads": multiprocessing.cpu_count() - 1,
+    "model_id": "mlx-community/aya-expanse-8b-4bit",  # Changed from model_path
+    "temperature": 0.4,
+    "max_tokens": 8192,
     "top_p": 0.9,
-    "repeat_penalty": 1.1,
+    "repeat_penalty": 1.3,
 }
 
+
 EMBEDDING_CONFIG = {
-    "model_path": str(BASE_DIR / "models/llama-2-13b-embeddings.gguf"),
+    "model_path": str(BASE_DIR / "ai_models/bge-m3-korean-q4_k_m.gguf"),
     "chunk_size": 8192,
     "chunk_overlap": 200,
 }

@@ -174,37 +174,38 @@ class QualityService:
     ) -> float:
         """Evaluate methodology quality"""
         try:
-            prompt = f"""
-            Evaluate this research methodology:
-            {methodology}
+            prompt = """f{json.dumps(relationships, indent=2)}
 
-            Consider these aspects and provide a score (0.0-1.0) for each:
-            1. Research Design:
-               - Appropriateness for research question
-               - Control of confounding variables
-               - Sampling strategy
+            Develop a theoretical framework for this research question: {project.query}
 
-            2. Statistical Rigor:
-               - Sample size: {metrics.get('sample_size')}
-               - Power: {metrics.get('power')}
-               - Effect size: {metrics.get('effect_size')}
+            Follow these steps sequentially, validating each before proceeding:
 
-            3. Data Collection:
-               - Methods appropriateness
-               - Quality control measures
-               - Data validation procedures
+            STEP 1: Relationship Analysis
+            - Identify the strongest relationship pairs in the data
+            - Classify each relationship as primary or secondary
+            - Note any unexpected or counter-intuitive patterns
+            - Minimum requirement: Analyze at least {len(relationships)} unique relationships
 
-            4. Analysis Techniques:
-               - Statistical methods
-               - Data processing procedures
-               - Result interpretation approach
+            STEP 2: Variable Framework
+            For each key variable:
+            - Define its role (dependent/independent/mediating)
+            - Specify its measurement level (nominal/ordinal/interval/ratio)
+            - Describe its theoretical boundaries
+            - List potential confounding factors
 
-            5. Bias Control:
-               - Selection bias
-               - Measurement bias
-               - Reporting bias
+            STEP 3: Hypothesis Generation
+            Generate hypotheses that:
+            - Include at least one novel prediction
+            - Address both direct and indirect relationships
+            - Consider interaction effects
+            - Specify effect directions and magnitudes
 
-            Format response as JSON with scores and justifications for each aspect.
+            STEP 4: Theoretical Integration
+            - Connect to at least 2 existing theories in the field
+            - Identify points of theoretical tension or agreement
+            - Explain how this framework extends current understanding
+
+            Ensure each section contains unique insights specific to this research context.
             """
 
             response = self.llm_service.generate_research(prompt)
@@ -266,6 +267,7 @@ class QualityService:
                - Implementation quality
 
             Format response as JSON with scores and justifications for each aspect.
+            don't response repetily
             """
 
             response = self.llm_service.generate_research(prompt)

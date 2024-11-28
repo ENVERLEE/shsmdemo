@@ -55,7 +55,8 @@ class MethodologyService:
             Format the response as JSON with:
             1. Framework description
             2. Key variables and their roles
-            3. Hypotheses            4. Theoretical foundations
+            3. Hypotheses
+            4. Theoretical foundations
             5. Measurement approach
             """
 

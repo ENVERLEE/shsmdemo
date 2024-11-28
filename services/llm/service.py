@@ -1,8 +1,8 @@
-from typing import Dict, Any, Optional
-from langchain_community.llms import LlamaCpp
-from langchain.callbacks.manager import CallbackManager
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from typing import Dict, Any, Optional, Union, List
+from langchain_community.llms.mlx_pipeline import MLXPipeline
+from langchain_community.chat_models.mlx import ChatMLX
 from langchain.chains import LLMChain
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from core.exceptions import LLMServiceException
 from config.settings import LLM_CONFIG
 from services.llm.prompts import RESEARCH_PROMPT, QUALITY_CHECK_PROMPT, IMPROVEMENT_PROMPT
@@ -12,19 +12,31 @@ class LLMService:
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         self.config = config or LLM_CONFIG
 
-        # Initialize LlamaCpp with streaming capability
-        self.llm = LlamaCpp(
-            model_path=self.config['model_path'],
-            temperature=self.config['temperature'],
-            max_tokens=self.config['max_tokens'],
-            n_ctx=self.config['n_ctx'],
-            n_gpu_layers=self.config['n_gpu_layers'],
-            n_threads=self.config['n_threads'],
-            top_p=self.config['top_p'],
-            repeat_penalty=self.config['repeat_penalty'],
-            callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),
-            verbose=True
+        # Initialize MLX model
+        self.llm = MLXPipeline.from_model_id(
+            model_id=self.config['model_id'],
+            pipeline_kwargs={
+                "max_tokens": self.config['max_tokens'],
+                "temp": self.config['temperature'],
+                "top_p": self.config['top_p']
+            }
         )
+
+        self.chat_model = ChatMLX(llm=self.llm)
+
+    def _format_response(
+        self,
+        response: Union[str, List[Union[str, Dict[str, Any]]], BaseMessage]
+    ) -> str:
+        """Helper method to format MLX response to string"""
+        print("LLM Response:", response)  # Print the raw LLM response
+        if isinstance(response, BaseMessage):
+            return str(response.content).strip()
+        if isinstance(response, str):
+            return response.strip()
+        elif isinstance(response, list):
+            return str(response[0]).strip() if response else ""
+        return str(response).strip()
 
     def generate_research(
         self,
@@ -45,18 +57,17 @@ class LLMService:
                 }
                 direction_guidance += direction_map.get(direction, "")
 
-            chain = LLMChain(
-                llm=self.llm,
-                prompt=RESEARCH_PROMPT
-            )
-
-            response = chain.run(
+            prompt_content = RESEARCH_PROMPT.format(
                 query=query,
                 context=context or "",
                 direction_guidance=direction_guidance
             )
 
-            return response.strip()
+            message = HumanMessage(content=prompt_content)
+            response = self.chat_model.invoke([message])
+            formatted = self._format_response(response)
+            print("Formatted Response:", formatted)  # Print formatted response
+            return formatted
 
         except Exception as e:
             raise LLMServiceException(f"Error generating research: {str(e)}")
@@ -75,7 +86,7 @@ class LLMService:
         """
         try:
             # Prepare evaluation criteria prompt
-            criteria_prompt = QUALITY_CHECK_PROMPT
+            criteria_prompt = QUALITY_CHECK_PROMPT.format(text=text)  # Remove str() conversion
             if evaluation_criteria:
                 criteria_prompt = f"""Evaluate the quality based on these weighted criteria:
                 1. Methodology (weight: {evaluation_criteria.methodology_weight})
@@ -90,15 +101,13 @@ class LLMService:
                 Provide numerical scores (0.0-1.0) for each criterion and detailed justification.
                 """
 
-            chain = LLMChain(
-                llm=self.llm,
-                prompt=criteria_prompt
-            )
-
-            response = chain.run(text=text)
+            message = HumanMessage(content=criteria_prompt)
+            response = self.chat_model.invoke([message])
+            response_text = self._format_response(response)
+            print("Quality Check Response:", response_text)  # Print quality check response
 
             scores = self._parse_quality_scores(
-                response,
+                response_text,
                 evaluation_criteria
             )
             return scores
@@ -135,20 +144,17 @@ class LLMService:
                 - Validity: {evaluation_criteria.required_validity_score}
                 """
 
-            prompt = IMPROVEMENT_PROMPT.format(
+            prompt = IMPROVEMENT_PROMPT.format(  # Remove str() conversion
                 text=text,
                 feedback=feedback,
                 improvement_guidance=improvement_guidance
             )
 
-            chain = LLMChain(
-                llm=self.llm,
-                prompt=prompt
-            )
-
-            response = chain.run()
-
-            return response.strip()
+            message = HumanMessage(content=prompt)
+            response = self.chat_model.invoke([message])
+            formatted = self._format_response(response)
+            print("Improvement Response:", formatted)  # Print improvement response
+            return formatted
 
         except Exception as e:
             raise LLMServiceException(f"Error improving text: {str(e)}")

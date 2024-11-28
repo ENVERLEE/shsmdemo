@@ -1,5 +1,4 @@
 from typing import Optional
-
 from services.research.service import ResearchService
 from services.research.literature_review import LiteratureReviewService
 from services.research.methodology import MethodologyService

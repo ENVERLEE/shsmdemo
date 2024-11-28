@@ -69,6 +69,11 @@ class LiteratureReviewService:
                     "content": f"Consider the research context: {self.context.research_project.context}"
                 })
 
+            # Print search query
+            print("\n=== Perplexity API Search ===")
+            print(f"Query: {query}")
+            print("============================\n")
+
             request_body = {
                 "model": "llama-3.1-sonar-small-128k-online",
                 "messages": messages,
@@ -87,11 +92,29 @@ class LiteratureReviewService:
             )
 
             if response.status_code != 200:
+                print(f"Error: API request failed with status code {response.status_code}")
+                print(f"Response: {response.text}")
                 raise ResearchException(f"Perplexity API error: {response.text}")
 
             response_data = response.json()
             papers_data = self._parse_assistant_response(response_data["choices"][0]["message"]["content"])
             citations = response_data.get("citations", [])
+
+            # Print found papers
+            print("\n=== Search Results ===")
+            for idx, paper in enumerate(papers_data, 1):
+                print(f"\nPaper {idx}:")
+                print(f"Title: {paper.get('title', 'N/A')}")
+                print(f"Authors: {paper.get('authors', 'N/A')}")
+                print(f"Year: {paper.get('year', 'N/A')}")
+                print(f"Journal: {paper.get('journal', 'N/A')}")
+                print(f"Citations: {paper.get('citations', 'N/A')}")
+                print(f"DOI: {paper.get('doi', 'N/A')}")
+                print(f"URL: {paper.get('url', 'N/A')}")
+                print("Abstract:", paper.get('abstract', 'N/A')[:200] + "..." if paper.get('abstract') else 'N/A')
+                print("-" * 50)
+            print(f"\nTotal papers found: {len(papers_data)}")
+            print("============================\n")
 
             papers = []
             for paper_data in papers_data[:limit]:
@@ -126,6 +149,7 @@ class LiteratureReviewService:
             return papers
 
         except Exception as e:
+            print(f"\nError occurred during paper collection: {str(e)}")
             raise ResearchException(f"Error collecting papers: {str(e)}")
 
     def _parse_assistant_response(self, content: str) -> List[dict]:
@@ -220,14 +244,35 @@ class LiteratureReviewService:
                 Year: {paper.year}
                 {context}
 
-                Identify potential research gaps by considering:
-                1. Limitations mentioned in the paper
-                2. Future work suggestions
-                3. Methodological gaps
-                4. Theoretical gaps
-                5. Application gaps
+                Analyze potential research gaps through this structured approach:
 
-                Format the response as a structured list of specific gaps.
+                Step 1: Initial Gap Analysis
+                For each gap category below, identify at least one specific example and explain its significance:
+                - Methodological gaps (focus on research design, data collection, or analytical approaches)
+                - Theoretical gaps (examine underlying assumptions, conceptual frameworks, or theoretical foundations)
+                - Application gaps (consider practical implementations or real-world applications)
+
+                Step 2: Contextual Evaluation
+                Compare this paper's approach with:
+                - Contemporary research trends in the field
+                - Similar studies from different contexts
+                - Alternative methodological approaches
+
+                Step 3: Specific Gap Documentation
+                For each identified gap, provide:
+                a) Concrete evidence from the paper supporting its existence
+                b) Potential impact on the field if addressed
+                c) Specific challenges in addressing this gap
+                d) At least one novel approach to address it
+
+                Step 4: Priority Assessment
+                Rank the top 3 most critical gaps based on:
+                - Scientific impact
+                - Practical feasibility
+                - Innovation potential
+                - Resource requirements
+
+                Format your response as a structured analysis following these steps, ensuring each gap is unique and specifically related to this paper's context."
                 """
 
                 gap_response = self.llm_service.generate_research(gap_prompt)
